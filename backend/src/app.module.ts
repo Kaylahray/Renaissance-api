@@ -24,6 +24,7 @@ import { PostsModule } from './posts/posts.module';
 import { PredictionsModule } from './predictions/predictions.module';
 import { validate } from './common/config/env.validation';
 import { BlockchainModule } from './blockchain/blockchain.module';
+import { LeaderboardsModule } from './leaderboards/leaderboards.module';
 import { SpinModule } from './spin/spin.module';
 import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
