@@ -16,6 +16,7 @@ import {
 import { CreateBetDto } from './dto/create-bet.dto';
 import { UpdateBetStatusDto } from './dto/update-bet-status.dto';
 import { WalletService } from '../wallet/wallet.service';
+import { FreeBetVoucherService } from '../free-bet-vouchers/free-bet-vouchers.service';
 import {
   Transaction,
   TransactionType,
@@ -39,6 +40,7 @@ export class BetsService {
     private readonly matchRepository: Repository<Match>,
     private readonly dataSource: DataSource,
     private readonly walletService: WalletService,
+    private readonly freeBetVoucherService: FreeBetVoucherService,
   ) {}
 
   /**
@@ -79,29 +81,46 @@ export class BetsService {
         );
       }
 
-      // Deduct stake amount from user wallet using wallet service
-      // This ensures proper transaction history tracking
-      const walletResult = await this.walletService.updateUserBalance(
-        userId,
-        -Number(createBetDto.stakeAmount), // Negative amount for deduction
-        TransactionType.BET_PLACEMENT,
-        undefined,
-        {
-          matchId: createBetDto.matchId,
-          predictedOutcome: createBetDto.predictedOutcome,
-        },
-      );
-
-      if (!walletResult.success) {
-        throw new BadRequestException(
-          walletResult.error || 'Failed to deduct stake amount from wallet',
-        );
+      // Resolve free bet voucher if provided. Vouchers: non-withdrawable, betting only, auto-consumed on use.
+      let useVoucher = false;
+      let voucherId: string | undefined;
+      if (createBetDto.voucherId) {
+        const voucher =
+          await this.freeBetVoucherService.validateVoucher(
+            createBetDto.voucherId,
+            userId,
+          );
+        const vAmount = Number(voucher.amount);
+        if (Number(createBetDto.stakeAmount) !== vAmount) {
+          throw new BadRequestException(
+            `Stake amount must equal voucher amount (${vAmount}) when using a free bet voucher`,
+          );
+        }
+        useVoucher = true;
+        voucherId = createBetDto.voucherId;
       }
 
-      // Calculate odds based on predicted outcome
-      const odds = this.getOddsForOutcome(match, createBetDto.predictedOutcome);
+      // Deduct from wallet only when not using a voucher (vouchers cannot be withdrawn)
+      if (!useVoucher) {
+        const walletResult = await this.walletService.updateUserBalance(
+          userId,
+          -Number(createBetDto.stakeAmount),
+          TransactionType.BET_PLACEMENT,
+          undefined,
+          {
+            matchId: createBetDto.matchId,
+            predictedOutcome: createBetDto.predictedOutcome,
+          },
+        );
+        if (!walletResult.success) {
+          throw new BadRequestException(
+            walletResult.error || 'Failed to deduct stake amount from wallet',
+          );
+        }
+      }
 
-      // Calculate potential payout
+      // Calculate odds and potential payout
+      const odds = this.getOddsForOutcome(match, createBetDto.predictedOutcome);
       const potentialPayout = Number(createBetDto.stakeAmount) * Number(odds);
 
       // Create the bet
@@ -113,23 +132,36 @@ export class BetsService {
         odds,
         potentialPayout,
         status: BetStatus.PENDING,
+        metadata: useVoucher
+          ? { voucherId, isFreeBet: true }
+          : undefined,
       });
 
       const savedBet = await queryRunner.manager.save(bet);
 
-      // Update the transaction record with bet ID
-      const transaction = await queryRunner.manager.findOne(Transaction, {
-        where: {
+      // Automatically consume voucher on use
+      if (useVoucher && voucherId) {
+        await this.freeBetVoucherService.consumeVoucher(
+          voucherId,
           userId,
-          type: TransactionType.BET_PLACEMENT,
-          status: TransactionStatus.COMPLETED,
-        },
-        order: { createdAt: 'DESC' } as any,
-      });
+          savedBet.id,
+        );
+      }
 
-      if (transaction) {
-        transaction.relatedEntityId = savedBet.id;
-        await queryRunner.manager.save(transaction);
+      // Link wallet transaction to bet (only when wallet was used)
+      if (!useVoucher) {
+        const transaction = await queryRunner.manager.findOne(Transaction, {
+          where: {
+            userId,
+            type: TransactionType.BET_PLACEMENT,
+            status: TransactionStatus.COMPLETED,
+          },
+          order: { createdAt: 'DESC' } as any,
+        });
+        if (transaction) {
+          transaction.relatedEntityId = savedBet.id;
+          await queryRunner.manager.save(transaction);
+        }
       }
 
       await queryRunner.commitTransaction();
