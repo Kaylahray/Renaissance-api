@@ -22,6 +22,7 @@ import { PostsModule } from './posts/posts.module';
 import { PredictionsModule } from './predictions/predictions.module';
 import { validate } from './common/config/env.validation';
 import { BlockchainModule } from './blockchain/blockchain.module';
+import { LeaderboardModule } from './leaderboard/leaderboard.module';
 
 @Module({
   imports: [
@@ -45,9 +46,9 @@ import { BlockchainModule } from './blockchain/blockchain.module';
       }),
     }),
     TypeOrmModule.forRootAsync({
-     imports: [ConfigModule],
-     inject: [ConfigService],
-     useFactory: (configService: ConfigService) => getTypeOrmConfig(configService),
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => getTypeOrmConfig(configService),
     }),
     TypeOrmModule.forFeature([
       User,
@@ -67,6 +68,7 @@ import { BlockchainModule } from './blockchain/blockchain.module';
     PlayerCardMetadataModule,
     PostsModule,
     PredictionsModule,
+    LeaderboardModule,
   ],
   controllers: [],
   providers: [
@@ -76,4 +78,4 @@ import { BlockchainModule } from './blockchain/blockchain.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }
