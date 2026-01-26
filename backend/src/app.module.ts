@@ -25,11 +25,8 @@ import { PostsModule } from './posts/posts.module';
 import { PredictionsModule } from './predictions/predictions.module';
 import { FreeBetVouchersModule } from './free-bet-vouchers/free-bet-vouchers.module';
 import { validate } from './common/config/env.validation';
-import { BlockchainModule } from './blockchain/blockchain.module';
 import { LeaderboardsModule } from './leaderboards/leaderboards.module';
 import { SpinModule } from './spin/spin.module';
-
-
 
 @Module({
   imports: [
@@ -55,7 +52,8 @@ import { SpinModule } from './spin/spin.module';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => getTypeOrmConfig(configService),
+      useFactory: (configService: ConfigService) =>
+        getTypeOrmConfig(configService),
     }),
     TypeOrmModule.forFeature([
       User,
@@ -89,4 +87,4 @@ import { SpinModule } from './spin/spin.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

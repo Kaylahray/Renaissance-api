@@ -1,7 +1,9 @@
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 
-export const getTypeOrmConfig = (configService: ConfigService): DataSourceOptions => {
+export const getTypeOrmConfig = (
+  configService: ConfigService,
+): DataSourceOptions => {
   // Extraemos la configuración base
   const dbConfig = configService.get<DataSourceOptions>('database');
 
@@ -21,5 +23,5 @@ export const getTypeOrmConfig = (configService: ConfigService): DataSourceOption
 };
 
 // Exportación para CLI y DataSource manual
-export const AppDataSource = (configService: ConfigService) => 
+export const AppDataSource = (configService: ConfigService) =>
   new DataSource(getTypeOrmConfig(configService));

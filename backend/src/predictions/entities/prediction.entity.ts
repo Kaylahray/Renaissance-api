@@ -27,6 +27,7 @@ export class Prediction extends BaseEntity {
     name: 'predicted_outcome',
     type: 'enum',
     enum: MatchOutcome,
+    enumName: 'prediction_outcome_enum',
   })
   predictedOutcome: MatchOutcome;
 
