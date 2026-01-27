@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { getTypeOrmConfig } from './database/typeorm.config';
 import { User } from './users/entities/user.entity';
 import { Post } from './posts/entities/post.entity';
@@ -26,9 +27,15 @@ import { PredictionsModule } from './predictions/predictions.module';
 import { FreeBetVouchersModule } from './free-bet-vouchers/free-bet-vouchers.module';
 import { validate } from './common/config/env.validation';
 import { BlockchainModule } from './blockchain/blockchain.module';
+import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { LeaderboardsModule } from './leaderboards/leaderboards.module';
 import { SpinModule } from './spin/spin.module';
+import { HealthModule } from './health/health.module';
+import { CacheConfigModule } from './common/cache/cache.module';
+import { AdminModule } from './admin/admin.module';
 
+import { LeaderboardModule } from './leaderboard/leaderboard.module';
+import { ReconciliationModule } from './reconciliation/reconciliation.module';
 
 
 @Module({
@@ -40,6 +47,7 @@ import { SpinModule } from './spin/spin.module';
       validate,
       cache: true,
     }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -77,9 +85,15 @@ import { SpinModule } from './spin/spin.module';
     PlayerCardMetadataModule,
     PostsModule,
     PredictionsModule,
+    LeaderboardModule,
     FreeBetVouchersModule,
     SpinModule,
+    LeaderboardModule,
     LeaderboardsModule,
+    HealthModule,
+    CacheConfigModule,
+    AdminModule,
+    ReconciliationModule,
   ],
   controllers: [],
   providers: [

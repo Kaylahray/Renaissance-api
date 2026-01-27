@@ -8,6 +8,6 @@ import { Settlement } from './entities/settlement.entity';
 @Module({
   imports: [ConfigModule, TypeOrmModule.forFeature([Settlement])],
   providers: [SorobanService, SettlementService],
-  exports: [SettlementService],
+  exports: [SettlementService, SorobanService],
 })
 export class BlockchainModule {}
