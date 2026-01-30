@@ -37,6 +37,9 @@ import { ReconciliationModule } from './reconciliation/reconciliation.module';
 
 import { LoggerModule } from './common/logger/logger.module';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
+import { SpinGameModule } from './spin-game/spin-game.module';
+import { StakingModule } from './staking/staking.module';
+import { Leaderboard } from './leaderboard/entities/leaderboard.entity';
 
 
 @Module({
@@ -77,9 +80,8 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
       Bet,
       PlayerCardMetadata,
       Prediction,
-<<<<<<< HEAD
       Leaderboard,
-=======
+    SpinGameModule,
       FreeBetVoucher,
       Spin,
       SpinSession,
@@ -87,11 +89,9 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
       FreeBetVoucher,
       Spin,
       SpinSession,
-      UserLeaderboardStats,,
-<<<<<<< HEAD
+      UserLeaderboardStats,
     StakingModule,
     LeaderboardModule,
-=======
     LeaderboardModule,
     FreeBetVouchersModule,
     SpinModule,
