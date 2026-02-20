@@ -1,5 +1,5 @@
 
-use soroban_sdk::{contracttype, Address, Symbol,, BytesN String, U256, Map, Env};
+use soroban_sdk::{contracttype, Address, Symbol, BytesN, String, U256, Map, Env};
 
 // ===== CORE EVENTS =====
 
@@ -13,6 +13,7 @@ pub struct StakeEvent {
     pub timestamp: u64,
     pub stake_id: U256,
 }
+
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -110,6 +111,8 @@ pub struct SpinExecutedEvent {
     pub spin_id: BytesN<32>,
     pub executor: Address,
     pub timestamp: u64,
+}
+
 // ===== EVENT CONSTANTS =====
 
 pub const STAKE_EVENT: Symbol = Symbol::short("STAKE");
