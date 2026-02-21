@@ -1,7 +1,10 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::{Address as _}, Env, Address, BytesN, Symbol, token};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    token, Address, BytesN, Env, Symbol,
+};
 
 fn setup_test(env: &Env) -> (BettingContractClient<'_>, Address, Address) {
     let contract_id = env.register(BettingContract, ());
@@ -99,48 +102,85 @@ fn test_allow_double_betting_when_disabled() {
 }
 
 #[test]
-fn test_spin_execution_success() {
+fn executes_spin_once_per_spin_id() {
     let env = Env::default();
     env.mock_all_auths();
-    
-    let (client, _, executor) = setup_test(&env);
-    
-    let spin_id: BytesN<32> = BytesN::from_array(&env, &[1u8; 32]);
-    let spin_hash: BytesN<32> = BytesN::from_array(&env, &[2u8; 32]);
-    let signature: BytesN<64> = BytesN::from_array(&env, &[3u8; 64]);
 
-    let result = client.try_execute_spin(&spin_id, &spin_hash, &signature, &executor);
-    assert!(result.is_ok());
+    let (client, _, executor) = setup_test(&env);
+
+    let spin_id = BytesN::from_array(&env, &[1u8; 32]);
+    let spin_hash = BytesN::from_array(&env, &[2u8; 32]);
+    let signature = BytesN::from_array(&env, &[3u8; 64]);
+
+    client.execute_spin(&spin_id, &spin_hash, &signature, &executor);
+    assert_eq!(
+        client.try_execute_spin(&spin_id, &spin_hash, &signature, &executor),
+        Err(Ok(ContractError::DuplicateOperation))
+    );
 }
 
 #[test]
-fn test_prevent_duplicate_spin_execution() {
+fn rejects_replay_by_spin_hash() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (client, _, executor) = setup_test(&env);
 
-    let spin_id: BytesN<32> = BytesN::from_array(&env, &[1u8; 32]);
-    let spin_hash: BytesN<32> = BytesN::from_array(&env, &[2u8; 32]);
-    let signature: BytesN<64> = BytesN::from_array(&env, &[3u8; 64]);
+    let spin_hash = BytesN::from_array(&env, &[9u8; 32]);
+    let signature = BytesN::from_array(&env, &[4u8; 64]);
 
-    client.execute_spin(&spin_id, &spin_hash, &signature, &executor);
-    let result = client.try_execute_spin(&spin_id, &spin_hash, &signature, &executor);
-    assert!(result.is_err());
+    client.execute_spin(
+        &BytesN::from_array(&env, &[7u8; 32]),
+        &spin_hash,
+        &signature,
+        &executor,
+    );
+
+    assert_eq!(
+        client.try_execute_spin(
+            &BytesN::from_array(&env, &[8u8; 32]),
+            &spin_hash,
+            &signature,
+            &executor,
+        ),
+        Err(Ok(ContractError::DuplicateOperation))
+    );
 }
 
 #[test]
-fn test_is_spin_executed() {
+fn reports_spin_hash_usage() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (client, _, executor) = setup_test(&env);
 
-    let spin_id: BytesN<32> = BytesN::from_array(&env, &[1u8; 32]);
-    let spin_hash: BytesN<32> = BytesN::from_array(&env, &[2u8; 32]);
-    let signature: BytesN<64> = BytesN::from_array(&env, &[3u8; 64]);
+    let spin_id = BytesN::from_array(&env, &[10u8; 32]);
+    let spin_hash = BytesN::from_array(&env, &[11u8; 32]);
+    let signature = BytesN::from_array(&env, &[5u8; 64]);
 
-    assert!(!client.is_spin_executed(&spin_id));
+    assert!(!client.is_spin_hash_used(&spin_hash));
     client.execute_spin(&spin_id, &spin_hash, &signature, &executor);
-    assert!(client.is_spin_executed(&spin_id));
+    assert!(client.is_spin_hash_used(&spin_hash));
+}
+
+#[test]
+fn supports_ttl_cleanup_for_spin_hashes() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let (client, _, executor) = setup_test(&env);
+
+    let spin_id = BytesN::from_array(&env, &[12u8; 32]);
+    let spin_hash = BytesN::from_array(&env, &[13u8; 32]);
+    let signature = BytesN::from_array(&env, &[6u8; 64]);
+
+    client.execute_spin_with_ttl(&spin_id, &spin_hash, &signature, &executor, &Some(5));
+    assert!(client.is_spin_hash_used(&spin_hash));
+
+    env.ledger().with_mut(|li| {
+        li.timestamp += 6;
+    });
+
+    assert!(client.cleanup_spin_hash(&spin_hash));
+    assert!(!client.is_spin_hash_used(&spin_hash));
 }

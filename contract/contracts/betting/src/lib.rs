@@ -2,7 +2,10 @@
 use soroban_sdk::{
     contract, contractimpl, contracttype, token, Address, BytesN, Env, Map, Symbol,
 };
-use common::{SpinExecutedEvent, ContractError, BetPlacedEvent};
+use common::{
+    cleanup_operation, ensure_not_replayed, is_operation_executed, BetPlacedEvent, ContractError,
+    SpinExecutedEvent,
+};
 
 #[contracttype]
 #[derive(Clone)]
@@ -138,8 +141,19 @@ impl BettingContract {
         env: Env,
         spin_id: BytesN<32>,
         spin_hash: BytesN<32>,
-        _signature: BytesN<64>,
+        signature: BytesN<64>,
         executor: Address,
+    ) -> Result<(), ContractError> {
+        Self::execute_spin_with_ttl(env, spin_id, spin_hash, signature, executor, None)
+    }
+
+    pub fn execute_spin_with_ttl(
+        env: Env,
+        spin_id: BytesN<32>,
+        spin_hash: BytesN<32>,
+        signature: BytesN<64>,
+        executor: Address,
+        ttl_seconds: Option<u64>,
     ) -> Result<(), ContractError> {
         executor.require_auth();
 
@@ -150,17 +164,16 @@ impl BettingContract {
             .get(&DataKey::BackendSigner)
             .ok_or(ContractError::Unauthorized)?;
 
-        // Prevent replay attacks - check if spin hash was already used
-        let used_hashes: Map<BytesN<32>, bool> = storage
-            .get(&DataKey::UsedSpinHashes)
-            .unwrap_or_else(|| Map::new(&env));
-
-        if used_hashes.get(spin_hash.clone()).is_some() {
-            return Err(ContractError::SpinAlreadyExecuted);
-        }
-
-        // Verify that the backend signer authorized this execution
+        // Signature verification hook; auth is currently enforced via backend signer auth.
+        let _ = signature;
         backend_signer.require_auth();
+
+        ensure_not_replayed(
+            &env,
+            Symbol::new(&env, "spin_exec"),
+            spin_hash.clone(),
+            ttl_seconds,
+        )?;
 
         // Store spin execution
         let executions: Map<BytesN<32>, SpinExecution> = storage
@@ -184,12 +197,6 @@ impl BettingContract {
         let mut new_executions = executions.clone();
         new_executions.set(spin_id.clone(), execution.clone());
         storage.set(&DataKey::SpinExecutions, &new_executions);
-
-        // Mark spin hash as used
-        let mut new_hashes = used_hashes.clone();
-        new_hashes.set(spin_hash, true);
-        storage.set(&DataKey::UsedSpinHashes, &new_hashes);
-
         // Emit execution event
         let event = SpinExecutedEvent {
             spin_id: spin_id.clone(),
@@ -222,16 +229,13 @@ impl BettingContract {
         executions.get(spin_id).ok_or(ContractError::SpinNotFound)
     }
 
-    /// Check if a spin hash has been used (for replay attack prevention)
     pub fn is_spin_hash_used(env: Env, spin_hash: BytesN<32>) -> bool {
-        let storage = env.storage().persistent();
-        let used_hashes: Map<BytesN<32>, bool> = storage
-            .get(&DataKey::UsedSpinHashes)
-            .unwrap_or_else(|| Map::new(&env));
+        is_operation_executed(&env, Symbol::new(&env, "spin_exec"), spin_hash)
+    }
 
-        used_hashes.get(spin_hash).is_some()
+    pub fn cleanup_spin_hash(env: Env, spin_hash: BytesN<32>) -> bool {
+        cleanup_operation(&env, Symbol::new(&env, "spin_exec"), spin_hash)
     }
 }
-
 #[cfg(test)]
 mod test;

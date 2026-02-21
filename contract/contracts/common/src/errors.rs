@@ -17,4 +17,5 @@ pub enum ContractError {
     InvalidSpinHash = 11,
     SpinNotFound = 12,
     BetAlreadyPlaced = 13,
+    DuplicateOperation = 14,
 }
