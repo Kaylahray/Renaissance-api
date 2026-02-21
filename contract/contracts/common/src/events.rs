@@ -41,6 +41,94 @@ pub struct ReplayRejectedEvent {
     pub timestamp: u64,
 }
 
+// ===== EVENT CONSTANTS =====
+pub const STAKE_EVENT: Symbol = Symbol::short("STAKE");
+pub const UNSTAKE_EVENT: Symbol = Symbol::short("UNSTAKE");
+pub const BET_EVENT: Symbol = Symbol::short("BET");
+pub const SETTLEMENT_EVENT: Symbol = Symbol::short("SETTLE");
+pub const SPIN_REWARD_EVENT: Symbol = Symbol::short("SPIN_RWD");
+pub const NFT_MINT_EVENT: Symbol = Symbol::short("NFT_MINT");
+
+// ===== EVENT HELPERS =====
+
+pub fn create_stake_event(
+    user: Address,
+    amount: i128,
+    token_address: Address,
+    staking_contract: Address,
+    stake_id: U256,
+) -> StakeEvent {
+    StakeEvent {
+        user,
+        amount,
+        token_address,
+        staking_contract,
+        timestamp: 0, // Will be set by contract
+        stake_id,
+    }
+}
+
+pub fn create_unstake_event(
+    user: Address,
+    amount: i128,
+    token_address: Address,
+    staking_contract: Address,
+    stake_id: U256,
+    rewards: i128,
+) -> UnstakeEvent {
+    UnstakeEvent {
+        user,
+        amount,
+        token_address,
+        staking_contract,
+        timestamp: 0, // Will be set by contract
+        stake_id,
+        rewards,
+    }
+}
+
+pub fn create_bet_event(
+    env: &Env,
+    bettor: Address,
+    amount: i128,
+    bet_id: U256,
+    betting_contract: Address,
+    bet_type: Symbol,
+    odds: u32,
+) -> BetEvent {
+    BetEvent {
+        bettor,
+        amount,
+        bet_id,
+        betting_contract,
+        timestamp: 0, // Will be set by contract
+        bet_type,
+        odds,
+        metadata: Map::new(env),
+    }
+}
+
+pub fn create_settlement_event(
+    env: &Env,
+    bet_id: U256,
+    winner: Address,
+    payout: i128,
+    betting_contract: Address,
+    settlement_type: Symbol,
+    final_odds: u32,
+) -> SettlementEvent {
+    SettlementEvent {
+        bet_id,
+        winner,
+        payout,
+        betting_contract,
+        timestamp: 0, // Will be set by contract
+        settlement_type,
+        final_odds,
+        metadata: Map::new(env),
+    }
+}
+
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BetPlacedEvent {
@@ -50,6 +138,7 @@ pub struct BetPlacedEvent {
 }
 
 // ===== EVENT CONSTANTS =====
+
 
 pub const NFT_MINT_EVENT: Symbol = Symbol::short("NFT_MINT");
 
